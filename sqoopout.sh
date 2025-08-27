@@ -52,7 +52,7 @@ table_import () {
     --table "$table" \
     --hcatalog-table "ODS_$table" \
     --hcatalog-storage-stanza "stored as orc" \
-    --hcatalog-database aml_db \
+    --hcatalog-database AML_ODS.db \
     -m 1 >> "$LOG_FILE" 2>&1
 
     return $?
