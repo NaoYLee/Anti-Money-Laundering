@@ -1,10 +1,14 @@
 #!/bin/bash
 
+# Oracle数据库url
 ORACLE_CONNECT="jdbc:oracle:thin:@tcp://localhost:1521:orcl"
+# Oracle数据库用户名
 ORACLE_USER="aml"
+# Oracle数据库密码
 ORACLE_PASS="123456"
-HDFS_TARGET_DIR="/data/aml/ods"
+# 日志文件路径
 LOG_FILE="/var/log/sqoop_import.log"
+# 需要导出的表列表
 TABLES=(
     "AML_ACCOUNT_MASTER" 
     "AML_ALERT" 
@@ -18,46 +22,48 @@ TABLES=(
     "AML_WATCHLIST_MASTER"
     )
 
+# 初始化日志文件
 rm -rf "$LOG_FILE"
 mkdir -p "$(dirname "$LOG_FILE")"
 touch "$LOG_FILE"
 chmod 644 "$LOG_FILE"
 
+# 记录导出开始时间
 echo "======================================================================" >> "$LOG_FILE"
 echo "导出开始时间: $(date +'%Y-%m-%d %H:%M:%S')" >> "$LOG_FILE"
 
+# 导入单个表的函数
+# 参数:
+#   $1 - 要导入的表名
+# 返回值:
+#   Sqoop导入命令的返回状态码
 table_import () {
     local table="$1"
-    local hdfs_dir="${HDFS_TARGET_DIR}/${table}"
 
     echo "开始导入表: $table" >> "$LOG_FILE"
     start_time=$(date +%s)
     echo "开始时间：$start_time" >> "$LOG_FILE"
 
+    # 执行Sqoop导入命令，将Oracle表数据导入到Hive表中
     sqoop import \
     --connect "$ORACLE_CONNECT" \
     --username "$ORACLE_USER" \
     --password "$ORACLE_PASS" \
     --table "$table" \
-    --target-dir "$hdfs_dir" \
-    --fields-terminated-by ',' \
-    --as-orcfile \
+    --hcatalog-table "ODS_$table" \
+    --hcatalog-storage-stanza "stored as orc" \
+    --hcatalog-database aml_db \
     -m 1 >> "$LOG_FILE" 2>&1
 
     return $?
 }
 
+# 标记所有表是否导入成功的变量
 success=true
 
+# 遍历所有表并执行导入操作
 for table in "${TABLES[@]}"
 do
-    hdfs dfs -test -d "${HDFS_TARGET_DIR}/${table}"
-    return_code=$?
-    if [ $return_code -eq 0 ]
-    then
-        hdfs dfs -rm -r -f "${HDFS_TARGET_DIR}/${table}" >> "$LOG_FILE"
-    fi
-
     table_import "$table"
 
     status=$?
@@ -73,6 +79,7 @@ do
     fi
 done
 
+# 根据导入结果输出最终日志并退出
 if $success
 then
     echo "所有表导出完毕" >> "$LOG_FILE"
