@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Oracle数据库url
-ORACLE_CONNECT="jdbc:oracle:thin:@tcp://localhost:1521:orcl"
+ORACLE_CONNECT="jdbc:oracle:thin:@//localhost:1521/orcl"
 # Oracle数据库用户名
 ORACLE_USER="aml"
 # Oracle数据库密码
@@ -10,16 +10,16 @@ ORACLE_PASS="123456"
 LOG_FILE="/var/log/sqoop_import.log"
 # 需要导出的表列表
 TABLES=(
-    "AML_ACCOUNT_MASTER" 
-    "AML_ALERT" 
-    "AML_CUSTOMER_MASTER" 
-    "AML_MONITORING_RULE" 
-    "AML_SCREENING_RESULT" 
-    "AML_SUSPICIOUS_TXN_REPORT" 
-    "AML_TRANSACTION_DETAIL" 
-    "AML_UBO_INFO" 
-    "AML_WATCHLIST_DETAIL" 
-    "AML_WATCHLIST_MASTER"
+    'AML_ACCOUNT_MASTER' 
+    'AML_ALERT' 
+    'AML_CUSTOMER_MASTER' 
+    'AML_MONITORING_RULE' 
+    'AML_SCREENING_RESULT' 
+    'AML_SUSPICIOUS_TXN_REPORT' 
+    'AML_TRANSACTION_DETAIL' 
+    'AML_UBO_INFO' 
+    'AML_WATCHLIST_DETAIL' 
+    'AML_WATCHLIST_MASTER'
     )
 
 # 初始化日志文件
@@ -50,9 +50,11 @@ table_import () {
     --username "$ORACLE_USER" \
     --password "$ORACLE_PASS" \
     --table "$table" \
-    --hcatalog-table "ODS_$table" \
+    --hcatalog-table 'ODS_'"$table" \
     --hcatalog-storage-stanza "stored as orc" \
-    --hcatalog-database AML_ODS.db \
+    --hive-partition-key "etl_date" \
+    --hive-partition-value "2025-08-27" \
+    --hcatalog-database AML_ODS \
     -m 1 >> "$LOG_FILE" 2>&1
 
     return $?
