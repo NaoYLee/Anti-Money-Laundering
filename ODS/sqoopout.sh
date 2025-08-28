@@ -6,8 +6,6 @@ ORACLE_CONNECT="jdbc:oracle:thin:@192.168.40.1:1521/orcl"
 ORACLE_USER="aml"
 # Oracle数据库密码
 ORACLE_PASS="123456"
-# Hive数据库名称
-HIVE_DATABASE="AML_ODS"
 # 日志文件路径
 LOG_FILE="/var/log/sqoop_import.log"
 # 需要导入的表列表
@@ -59,7 +57,7 @@ table_import () {
     --hcatalog-storage-stanza "stored as orc" \
     --hive-partition-key "etl_date" \
     --hive-partition-value "$etl_date" \
-    --hcatalog-database "$HIVE_DATABASE" \
+    --hcatalog-database AML_ODS \
     -m 1 >> "$LOG_FILE" 2>&1
 
     return $?

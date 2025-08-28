@@ -1,5 +1,6 @@
 CREATE DATABASE IF NOT EXISTS AML_DWD COMMENT '反洗钱DWD层数据库' LOCATION '/user/hive/warehouse/AML_DWD.db';
 
+-- 创建DWD层客户维度表
 CREATE TABLE aml_dwd.dim_aml_customer (
     customer_sk BIGINT COMMENT '代理键',
     customer_id BIGINT COMMENT '业务主键',
@@ -22,57 +23,61 @@ CREATE TABLE aml_dwd.dim_aml_customer (
 ) COMMENT '客户维度表' PARTITIONED BY (etl_date STRING)
 STORED AS ORC;
 
-set hive.exec.dynamic.partition.mode=nonstrict;
-INSERT OVERWRITE TABLE aml_dwd.dim_aml_customer PARTITION (etl_date)
-SELECT
-    row_number() OVER () + 100000 AS customer_sk,
-    oacm.customer_id AS customer_id,
-    oacm.cust_no AS cust_no,
-    oacm.cust_name AS cust_name,
-    CASE oacm.cust_type
-        WHEN 'IND' THEN '个人'
-        WHEN 'CORP' THEN '对公'
-        ELSE '未知'
-    END AS cust_type,
-    CASE oacm.id_type
-        WHEN 'ID_CARD' THEN '身份证'
-        WHEN 'PASSPORT' THEN '护照'
-        WHEN 'BUS_LIC' THEN '营业执照'
-        ELSE oacm.id_type
-    END AS id_type,
-    CASE oacm.risk_level
-        WHEN 'LOW' THEN '低'
-        WHEN 'MEDIUM' THEN '中'
-        WHEN 'HIGH' THEN '高'
-        WHEN 'VERY_HIGH' THEN '极高'
-        ELSE '未知'
-    END AS risk_level,
-    CASE oacm.risk_level_source
-        WHEN 'MANUAL' THEN '人工'
-        WHEN 'AUTO' THEN '系统自动'
-        ELSE oacm.risk_level_source
-    END AS risk_level_source,
-    CASE oacm.status
-        WHEN 'ACTIVE' THEN '活跃'
-        WHEN 'INACTIVE' THEN '休眠'
-        WHEN 'CLOSED' THEN '已销户'
-        WHEN 'FROZEN' THEN '冻结'
-        ELSE oacm.status
-    END AS status,
-    oacm.industry AS industry_type,
-    oacm.occupation AS occupation_type,
-    oacm.nationality AS country_code,
-    oacm.residence_city AS city_code,
-    oacm.open_date AS start_date,
-    coalesce(
-        oacm.close_date,
-        cast('9999-12-31' AS DATE)
-    ) AS end_date,
-    CASE oacm.close_date
-        WHEN NULL THEN TRUE
-        ELSE FALSE
-    END AS is_current,
-    CURRENT_DATE () AS start_time,
-    cast('9999-12-31' AS DATE) AS end_time,
-    oacm.etl_date as etl_date
-FROM aml_ods.ods_aml_customer_master oacm;
+-- 创建DWD层账户维度表
+CREATE TABLE aml_dwd.dim_aml_account (
+    account_sk BIGINT COMMENT '代理键',
+    account_id BIGINT COMMENT '业务ID',
+    customer_id BIGINT COMMENT '客户ID',
+    acct_no STRING COMMENT '账户号码',
+    acct_type STRING COMMENT '账户类型', -- 转换值：储蓄/活期/信用卡/贷款 / 投资
+    currency_code STRING COMMENT '币种代码',
+    current_balance DECIMAL(18, 2) COMMENT '当前余额',
+    avg_daily_balance DECIMAL(18, 2) COMMENT '日均余额',
+    status STRING COMMENT '状态', -- 转换值：活跃/休眠/已销户/冻结
+    branch_code STRING COMMENT '网点代码',
+    channel_open STRING COMMENT '开户渠道', -- 转换值：柜面/网银/手机银行
+    start_date DATE COMMENT '生效日期',
+    end_date DATE COMMENT '失效日期'
+) COMMENT '账户维度表' PARTITIONED BY (etl_date STRING)
+STORED AS ORC;
+
+-- 创建DWD层时间维度表
+CREATE TABLE aml_dwd.dim_aml_date (
+    full_date DATE COMMENT '日期',
+    day_of_week STRING COMMENT '星期几',
+    day_of_month INT COMMENT '月中第几天',
+    week_of_year INT COMMENT '年中第几周',
+    month_name STRING COMMENT '月份名称',
+    QUARTER INT COMMENT '季度',
+    YEAR INT COMMENT '年份',
+    is_weekend BOOLEAN COMMENT '是否周末',
+    fiscal_period STRING COMMENT '财年期间'
+) COMMENT '时间维度表'
+STORED AS ORC;
+
+-- 创建DWD层名单维度表
+CREATE TABLE aml_dwd.dim_aml_watchlist (
+    watchlist_sk BIGINT COMMENT '代理键',
+    entity_id BIGINT COMMENT '业务主键',
+    list_code STRING COMMENT '名单代码',
+    list_type STRING COMMENT '名单类型', -- 转换值：制裁/恐怖/犯罪/政要/其他
+    list_source STRING COMMENT '名单来源', -- 转换值：联合国/美国财政部/中国公安部/内部
+    entity_type STRING COMMENT '实体类型', -- 转换值：个人/组织
+    sanction_type STRING COMMENT '制裁类型', -- 转换值：资产冻结/旅行禁令等
+    country_code STRING COMMENT '国籍代码',
+    risk_level STRING COMMENT '风险等级'
+) COMMENT '名单维度表' PARTITIONED BY (etl_date STRING)
+STORED AS ORC;
+
+-- 创建DWD层监控规则维度表
+CREATE TABLE aml_dwd.dim_aml_rule (
+    rule_sk bigint COMMENT '代理键',
+    rule_id STRING COMMENT '业务主键',
+    rule_name STRING COMMENT '规则名称',
+    rule_type STRING COMMENT '规则类型', -- 转换值：金额/频率/模式/行为
+    rule_category STRING COMMENT '规则类别', -- 转换值：现金/转账/跨境/赌博
+    severity_level STRING COMMENT '严重等级', -- 转换值：低/中/高/严重
+    active_status STRING COMMENT '启用状态', -- 转换值：是/否
+    threshold double COMMENT '阈值金额'
+) COMMENT '监控规则维度表' PARTITIONED BY (etl_date STRING)
+STORED AS ORC;
