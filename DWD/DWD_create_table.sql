@@ -22,6 +22,8 @@ CREATE TABLE aml_dwd.dim_aml_customer (
 ) COMMENT '客户维度表' PARTITIONED BY (etl_date STRING)
 STORED AS ORC;
 
+set hive.exec.dynamic.partition.mode=nonstrict;
+INSERT OVERWRITE TABLE aml_dwd.dim_aml_customer PARTITION (etl_date)
 SELECT
     row_number() OVER () + 100000 AS customer_sk,
     oacm.customer_id AS customer_id,
@@ -71,5 +73,6 @@ SELECT
         ELSE FALSE
     END AS is_current,
     CURRENT_DATE () AS start_time,
-    cast('9999-12-31' AS DATE) AS end_time
-FROM ods_aml_customer_master oacm;
+    cast('9999-12-31' AS DATE) AS end_time,
+    oacm.etl_date as etl_date
+FROM aml_ods.ods_aml_customer_master oacm;
