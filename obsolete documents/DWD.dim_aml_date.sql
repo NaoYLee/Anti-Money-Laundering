@@ -1,3 +1,19 @@
+CREATE TABLE IF NOT EXISTS dwd.dim_aml_date (
+    date_sk               INT         COMMENT '代理键',
+    full_date             DATE        COMMENT '日期',
+    day_of_week           STRING      COMMENT '星期几',
+    day_of_month          INT         COMMENT '月中第几天',
+    week_of_year          INT         COMMENT '年中第几周',
+    month_name            STRING      COMMENT '月份名称',
+    quarter               INT         COMMENT '季度',
+    year                  INT         COMMENT '年份',
+    is_weekend            BOOLEAN     COMMENT '是否周末',
+    fiscal_period         STRING      COMMENT '财年期间'
+)
+COMMENT '时间维度表'
+STORED AS ORC;
+
+
 INSERT OVERWRITE TABLE dwd.dim_aml_date
 SELECT
     CAST(TO_DATE(full_date) AS INT) AS date_sk,
