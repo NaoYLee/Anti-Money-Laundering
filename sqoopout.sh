@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Oracle数据库url
-ORACLE_CONNECT="jdbc:oracle:thin:@//localhost:1521/orcl"
+ORACLE_CONNECT="jdbc:oracle:thin:@192.168.40.1:1521/orcl"
 # Oracle数据库用户名
 ORACLE_USER="aml"
 # Oracle数据库密码
@@ -54,7 +54,7 @@ table_import () {
     --hcatalog-storage-stanza "stored as orc" \
     --hive-partition-key "etl_date" \
     --hive-partition-value "2025-08-27" \
-    --hcatalog-database AML_ODS \
+    --hcatalog-database ODS \
     -m 1 >> "$LOG_FILE" 2>&1
 
     return $?
