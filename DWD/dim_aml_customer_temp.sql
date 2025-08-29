@@ -77,7 +77,7 @@ SELECT
         cast('9999-12-31' AS DATE)
     ) AS end_date,
     TRUE AS is_current,
-    CURRENT_DATE () AS start_time,
+    oacmi2.updated_date AS start_time,
     cast('9999-12-31' AS DATE) AS end_time,
     oacmi2.etl_date AS etl_date
 FROM aml_ods.ods_aml_customer_maste_increment oacmi2
