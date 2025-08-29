@@ -15,20 +15,35 @@ STORED AS ORC;
 SET hive.exec.dynamic.partition.mode = nonstrict;
 
 INSERT INTO
-    aml_dws.dws_aml_customer_risk_profile PARTITION (etl_date);
-
+    aml_dws.dws_aml_customer_risk_profile PARTITION (etl_date)
 SELECT
     dac.customer_sk AS customer_sk,
     dac.risk_level AS risk_level,
     sum(
         coalesce(daa.current_balance, 0)
     ) AS total_balance,
-    DATE_FORMAT(
-        TO_DATE(
-            CAST(max(fat.date_sk) AS STRING)
+    date_format(
+        CONCAT_ws(
+            '-',
+            SUBSTR(
+                CAST(max(fat.date_sk) AS STRING),
+                1,
+                4
+            ),
+            SUBSTR(
+                CAST(max(fat.date_sk) AS STRING),
+                5,
+                2
+            ),
+            SUBSTR(
+                CAST(max(fat.date_sk) AS STRING),
+                7,
+                2
+            )
         ),
         'yyyy-MM-dd'
-    ) AS last_txn_date count(DISTINCT faa.alert_sk) AS alert_count,
+    ) AS last_txn_date,
+    count(DISTINCT faa.alert_sk) AS alert_count,
     count(DISTINCT fas.screening_sk) AS screening_hit_count,
     CASE
         WHEN count(report_sk) > 0 THEN TRUE

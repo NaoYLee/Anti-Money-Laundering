@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Oracle数据库url
-ORACLE_CONNECT="jdbc:oracle:thin:@192.168.40.1:1521/orcl"
+ORACLE_CONNECT="jdbc:oracle:thin:@192.168.63.12:1521/orcl"
 # Oracle数据库用户名
 ORACLE_USER="aml"
 # Oracle数据库密码
