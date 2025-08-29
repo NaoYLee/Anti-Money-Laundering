@@ -68,7 +68,10 @@ SELECT
     cast('9999-12-31' AS DATE) AS end_time,
     -- 获取分区日期
     oacm.etl_date AS etl_date
-FROM aml_ods.ods_aml_customer_master oacm;
+FROM aml_ods.ods_aml_customer_master oacm
+WHERE
+    oacm.open_date < oacm.close_date
+    OR oacm.close_date IS NULL;
 
 -- 向DWD层账户维度表写入数据
 INSERT
@@ -76,47 +79,65 @@ INSERT
 SELECT
     -- 生成代理键
     row_number() OVER (
-        ORDER BY account_id
+        ORDER BY oaam.account_id
     ) + 200000 AS account_sk,
-    account_id,
-    customer_id,
-    acct_no,
+    oaam.account_id AS account_id,
+    oaam.customer_id AS customer_id,
+    oaam.acct_no AS acct_no,
     -- 转换账户类型
-    CASE acct_type
+    CASE oaam.acct_type
         WHEN 'SAVING' THEN '储蓄'
         WHEN 'CURRENT' THEN '活期'
         WHEN 'CREDIT' THEN '信用卡'
         WHEN 'LOAN' THEN '贷款'
         WHEN 'INVESTMENT' THEN '投资'
-        ELSE acct_type
+        ELSE oaam.acct_type
     END AS acct_type,
-    currency AS currency_code,
-    current_balance,
-    avg_daily_balance,
+    oaam.currency AS currency_code,
+    oaam.current_balance AS current_balance,
+    oaam.avg_daily_balance AS avg_daily_balance,
     -- 转换账户状态
-    CASE status
+    CASE oaam.status
         WHEN 'ACTIVE' THEN '活跃'
         WHEN 'INACTIVE' THEN '休眠'
         WHEN 'CLOSED' THEN '已销户'
         WHEN 'FROZEN' THEN '冻结'
-        ELSE status
+        ELSE oaam.status
     END AS status,
-    branch_code,
+    oaam.branch_code AS branch_code,
     -- 转换开户渠道
-    CASE channel_open
+    CASE oaam.channel_open
         WHEN 'COUNTER' THEN '柜面'
         WHEN 'ONLINE' THEN '网银'
         WHEN 'MOBILE' THEN '手机银行'
-        ELSE channel_open
+        ELSE oaam.channel_open
     END AS channel_open,
-    open_date AS start_date,
+    oaam.open_date AS start_date,
     -- 设置失效日期
     CASE
-        WHEN close_date IS NULL THEN cast('9999-12-31' AS DATE)
-        ELSE close_date
+        WHEN oaam.close_date IS NULL THEN cast('9999-12-31' AS DATE)
+        ELSE oaam.close_date
     END AS end_date,
-    etl_date
-FROM aml_ods.ods_aml_account_master;
+    oaam.etl_date
+FROM aml_ods.ods_aml_account_master oaam
+WHERE (
+        oaam.open_date < oaam.close_date
+        OR oaam.close_date IS NULL
+    )
+    AND (
+        (
+            oaam.current_balance >= 0
+            AND oaam.acct_type IN (
+                'SAVING',
+                'CURRENT',
+                'INVESTMENT'
+            )
+        )
+        OR (
+            oaam.current_balance <= 0
+            AND oaam.acct_type IN ('CREDIT', 'LOAN')
+        )
+    );
 
 -- 向DWD时间维度表写入数据
 INSERT
@@ -183,6 +204,8 @@ SELECT
         WHEN 'OFAC' THEN '美国财务部'
         WHEN 'MPS' THEN '中国公安部'
         WHEN 'INTERNAL' THEN '内部'
+        WHEN 'EU' THEN '欧洲联盟'
+        WHEN 'HKMA' THEN '香港金融管理局'
         ELSE oawm.list_source
     END AS list_source,
     CASE oawd.entity_type
@@ -231,6 +254,9 @@ SELECT
         WHEN 'TFR' THEN '转账'
         WHEN 'CROSS_BORDER' THEN '跨境'
         WHEN 'GAMBLING' THEN '赌博'
+        WHEN 'CREDIT' THEN '信用卡'
+        WHEN 'INVSTMENT' THEN '投资'
+        WHEN 'LOAN' THEN '贷款'
         ELSE rule_category
     END AS rule_category,
     -- 转换严重等级
@@ -299,7 +325,26 @@ SELECT
     oatd.etl_date
 FROM aml_ods.ods_aml_transaction_detail oatd
     JOIN AML_dwd.dim_aml_account dac ON oatd.account_id = dac.account_id
-    JOIN aml_dwd.dim_aml_date d ON oatd.txn_date = d.full_date;
+    JOIN aml_dwd.dim_aml_date d ON oatd.txn_date = d.full_date
+WHERE (
+        oatd.txn_amount >= 0
+        AND oatd.txn_type IN ('CASH_DEP', 'TFR_IN')
+    )
+    OR (
+        oatd.txn_amount <= 0
+        AND oatd.txn_type IN (
+            'CASH_WD',
+            'TFR_OUT',
+            'PAYMENT'
+        )
+    )
+    OR oatd.txn_type NOT IN (
+        'CASH_DEP',
+        'TFR_IN',
+        'CASH_WD',
+        'TFR_OUT',
+        'PAYMENT'
+    );
 
 -- 向DWD层监控报告事实表写入数据
 INSERT
@@ -407,6 +452,8 @@ SELECT
         WHEN 'MONEY_LAUNDERING' THEN '洗钱'
         WHEN 'TERRORIST_FINANCING' THEN '恐怖融资'
         WHEN 'FRAUD' THEN '欺诈'
+        WHEN 'CORRUPTION' THEN '腐败'
+        WHEN 'TAX_EVASION' THEN '逃税'
         ELSE oastr.case_category
     END AS case_category,
     CASE oastr.report_status

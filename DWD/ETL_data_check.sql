@@ -43,182 +43,194 @@ SELECT o.cnt AS ods_count, d.cnt AS dwd_count, ABS(o.cnt - d.cnt) AS diff
 FROM ods_count o, dwd_count d;
 
 -- 客户维度枚举值检查
-SELECT 
-    cust_type,
-    COUNT(*) AS cnt
+SELECT cust_type, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_customer
-GROUP BY cust_type
-HAVING cust_type NOT IN ('个人', '对公', '未知');
+GROUP BY
+    cust_type
+HAVING
+    cust_type NOT IN ('个人', '对公', '未知');
 
-SELECT 
-    id_type,
-    COUNT(*) AS cnt
+SELECT id_type, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_customer
-GROUP BY id_type
-HAVING id_type NOT IN ('身份证', '护照', '营业执照');
+GROUP BY
+    id_type
+HAVING
+    id_type NOT IN ('身份证', '护照', '营业执照');
 
-SELECT 
-    risk_level,
-    COUNT(*) AS cnt
+SELECT risk_level, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_customer
-GROUP BY risk_level
-HAVING risk_level NOT IN ('低', '中', '高', '极高', '未知');
+GROUP BY
+    risk_level
+HAVING
+    risk_level NOT IN ('低', '中', '高', '极高', '未知');
 
-SELECT 
-    status,
-    COUNT(*) AS cnt
+SELECT status, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_customer
-GROUP BY status
-HAVING status NOT IN ('活跃', '休眠', '已销户', '冻结');
+GROUP BY
+    status
+HAVING
+    status NOT IN ('活跃', '休眠', '已销户', '冻结');
 
 -- 账户维度枚举值检查
-SELECT 
-    acct_type,
-    COUNT(*) AS cnt
+SELECT acct_type, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_account
-GROUP BY acct_type
-HAVING acct_type NOT IN ('储蓄', '活期', '信用卡', '贷款', '投资');
+GROUP BY
+    acct_type
+HAVING
+    acct_type NOT IN ('储蓄', '活期', '信用卡', '贷款', '投资');
 
-SELECT 
-    status,
-    COUNT(*) AS cnt
+SELECT status, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_account
-GROUP BY status
-HAVING status NOT IN ('活跃', '休眠', '已销户', '冻结');
+GROUP BY
+    status
+HAVING
+    status NOT IN ('活跃', '休眠', '已销户', '冻结');
 
-SELECT 
-    channel_open,
-    COUNT(*) AS cnt
+SELECT channel_open, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_account
-GROUP BY channel_open
-HAVING channel_open NOT IN ('柜面', '网银', '手机银行');
+GROUP BY
+    channel_open
+HAVING
+    channel_open NOT IN ('柜面', '网银', '手机银行');
 
 -- 交易事实表枚举值检查
-SELECT 
-    txn_type,
-    COUNT(*) AS cnt
+SELECT txn_type, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_transaction
-GROUP BY txn_type
-HAVING txn_type NOT IN ('现金存入', '现金取款', '转入', '转出', '支付');
+GROUP BY
+    txn_type
+HAVING
+    txn_type NOT IN (
+        '现金存入',
+        '现金取款',
+        '转入',
+        '转出',
+        '支付'
+    );
 
-SELECT 
-    txn_channel,
-    COUNT(*) AS cnt
+SELECT txn_channel, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_transaction
-GROUP BY txn_channel
-HAVING txn_channel NOT IN ('柜面', 'ATM', '网银', '手机银行', 'POS');
+GROUP BY
+    txn_channel
+HAVING
+    txn_channel NOT IN (
+        '柜面',
+        'ATM',
+        '网银',
+        '手机银行',
+        'POS'
+    );
 
-SELECT 
-    txn_status,
-    COUNT(*) AS cnt
+SELECT txn_status, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_transaction
-GROUP BY txn_status
-HAVING txn_status NOT IN ('成功', '失败', '待处理');
+GROUP BY
+    txn_status
+HAVING
+    txn_status NOT IN ('成功', '失败', '待处理');
 
 -- 监控规则维度表枚举值检查
-SELECT 
-    rule_type,
-    COUNT(*) AS cnt
+SELECT rule_type, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_rule
-GROUP BY rule_type
-HAVING rule_type NOT IN ('金额', '频率', '模式', '行为');
+GROUP BY
+    rule_type
+HAVING
+    rule_type NOT IN ('金额', '频率', '模式', '行为');
 
-SELECT 
-    rule_category,
-    COUNT(*) AS cnt
+SELECT rule_category, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_rule
-GROUP BY rule_category
-HAVING rule_category NOT IN ('现金', '转账', '跨境', '赌博');
+GROUP BY
+    rule_category
+HAVING
+    rule_category NOT IN ('现金', '转账', '跨境', '赌博', '信用卡', '投资', '贷款');
 
-SELECT 
-    severity_level,
-    COUNT(*) AS cnt
+SELECT severity_level, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_rule
-GROUP BY severity_level
-HAVING severity_level NOT IN ('低', '中', '高', '严重');
+GROUP BY
+    severity_level
+HAVING
+    severity_level NOT IN ('低', '中', '高', '严重');
 
-SELECT 
-    active_status,
-    COUNT(*) AS cnt
+SELECT active_status, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_rule
-GROUP BY active_status
-HAVING active_status NOT IN ('是', '否');
+GROUP BY
+    active_status
+HAVING
+    active_status NOT IN ('是', '否');
 
 -- 预警事实表枚举值检查
-SELECT 
-    alert_type,
-    COUNT(*) AS cnt
+SELECT alert_type, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_alert
-GROUP BY alert_type
-HAVING alert_type NOT IN ('规则', '模型');
+GROUP BY
+    alert_type
+HAVING
+    alert_type NOT IN ('规则', '模型');
 
-SELECT 
-    alert_status,
-    COUNT(*) AS cnt
+SELECT alert_status, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_alert
-GROUP BY alert_status
-HAVING alert_status NOT IN ('待处理', '审核中', '排除', '确认');
+GROUP BY
+    alert_status
+HAVING
+    alert_status NOT IN ('待处理', '审核中', '排除', '确认');
 
-SELECT 
-    severity_level,
-    COUNT(*) AS cnt
+SELECT severity_level, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_alert
-GROUP BY severity_level
-HAVING severity_level NOT IN ('低', '中', '高', '严重');
+GROUP BY
+    severity_level
+HAVING
+    severity_level NOT IN ('低', '中', '高', '严重');
 
 -- 可疑交易报告枚举值检查
-SELECT 
-    report_type,
-    COUNT(*) AS cnt
+SELECT report_type, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_str_report
-GROUP BY report_type
-HAVING report_type NOT IN ('初始', '修正', '结案');
+GROUP BY
+    report_type
+HAVING
+    report_type NOT IN ('初始', '修正', '结案');
 
-SELECT 
-    case_category,
-    COUNT(*) AS cnt
+SELECT case_category, COUNT(*) AS cnt
 FROM aml_dwd.fact_aml_str_report
-GROUP BY case_category
-HAVING case_category NOT IN ('洗钱', '恐怖融资', '欺诈');
+GROUP BY
+    case_category
+HAVING
+    case_category NOT IN ('洗钱', '恐怖融资', '欺诈', '腐败', '逃税');
 
 -- 日期维度检查
-SELECT 
-    COUNT(*) AS invalid_date_count
+SELECT COUNT(*) AS invalid_date_count
 FROM aml_dwd.dim_aml_date
-WHERE full_date IS NULL OR date_sk IS NULL;
+WHERE
+    full_date IS NULL
+    OR date_sk IS NULL;
 
 -- 名单维度表枚举值检查
-SELECT 
-    list_type,
-    COUNT(*) AS cnt
+SELECT list_type, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_watchlist
-GROUP BY list_type
-HAVING list_type NOT IN ('制裁', '恐怖', '犯罪', '政要', '其他');
+GROUP BY
+    list_type
+HAVING
+    list_type NOT IN ('制裁', '恐怖', '犯罪', '政要', '其他');
 
-SELECT 
-    list_source,
-    COUNT(*) AS cnt
+SELECT list_source, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_watchlist
-GROUP BY list_source
-HAVING list_source NOT IN ('联合国', '美国财务部', '中国公安部', '内部');
+GROUP BY
+    list_source
+HAVING
+    list_source NOT IN ('联合国', '美国财务部', '中国公安部', '内部', '欧洲联盟', '香港金融管理局');
 
-SELECT 
-    entity_type,
-    COUNT(*) AS cnt
+SELECT entity_type, COUNT(*) AS cnt
 FROM aml_dwd.dim_aml_watchlist
-GROUP BY entity_type
-HAVING entity_type NOT IN ('个人', '组织');
+GROUP BY
+    entity_type
+HAVING
+    entity_type NOT IN ('个人', '组织');
 
 -- 检查代理键唯一性
-SELECT 
+SELECT
     COUNT(*) - COUNT(DISTINCT customer_sk) AS customer_sk_duplicate_count
 FROM aml_dwd.dim_aml_customer;
 
-SELECT 
-    COUNT(*) - COUNT(DISTINCT account_sk) AS account_sk_duplicate_count
+SELECT COUNT(*) - COUNT(DISTINCT account_sk) AS account_sk_duplicate_count
 FROM aml_dwd.dim_aml_account;
 
-SELECT 
+SELECT
     COUNT(*) - COUNT(DISTINCT transaction_sk) AS transaction_sk_duplicate_count
 FROM aml_dwd.fact_aml_transaction;
 
@@ -242,23 +254,26 @@ SELECT
 FROM aml_dwd.dim_aml_customer;
 
 -- 检查金额字段合理性
-SELECT 
-    COUNT(*) AS negative_balance_count
+SELECT
+    COUNT(*) AS negative_current_balance_count
 FROM aml_dwd.dim_aml_account
-WHERE current_balance < 0;
+WHERE
+    current_balance < 0
+    AND acct_type NOT IN ('贷款', '信用卡');
 
-SELECT 
-    COUNT(*) AS negative_amount_count
+SELECT COUNT(*) AS negative_amount_count
 FROM aml_dwd.fact_aml_transaction
-WHERE amount < 0;
+WHERE
+    amount < 0
+    AND txn_type NOT IN ('转出', '支付', '现金取款');
 
 -- 检查日期逻辑一致性
-SELECT 
-    COUNT(*) AS invalid_date_range_count
+SELECT COUNT(*) AS invalid_date_range_count
 FROM aml_dwd.dim_aml_customer
-WHERE start_date > end_date;
+WHERE
+    start_date > end_date;
 
-SELECT 
-    COUNT(*) AS invalid_date_range_count
+SELECT COUNT(*) AS invalid_date_range_count
 FROM aml_dwd.dim_aml_account
-WHERE start_date > end_date;
+WHERE
+    start_date > end_date;
