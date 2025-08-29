@@ -26,7 +26,7 @@ SELECT
     END AS end_time,
     oacmi1.etl_date
 FROM aml_dwd.dim_aml_customer dac
-    JOIN aml_ods.ods_aml_customer_maste_increment oacmi1 ON dac.customer_id = oacmi1.customer_id
+    JOIN aml_ods.ods_aml_customer_master_increment oacmi1 ON dac.customer_id = oacmi1.customer_id
 WHERE
     dac.is_current = TRUE
 UNION ALL
@@ -80,7 +80,7 @@ SELECT
     oacmi2.updated_date AS start_time,
     cast('9999-12-31' AS DATE) AS end_time,
     oacmi2.etl_date AS etl_date
-FROM aml_ods.ods_aml_customer_maste_increment oacmi2
+FROM aml_ods.ods_aml_customer_master_increment oacmi2
     CROSS JOIN (
         SELECT max(customer_sk) AS max_customer_sk
         FROM aml_dwd.dim_aml_customer
@@ -94,4 +94,11 @@ FROM aml_dwd.dim_aml_customer
 WHERE
     is_current = FALSE;
 
-SELECT * FROM aml_dwd.dim_aml_customer_temp WHERE customer_id = '10';
+TRUNCATE TABLE dim_aml_customer;
+
+INSERT INTO
+    dim_aml_customer
+SELECT *
+FROM dim_aml_customer_temp;
+
+TRUNCATE TABLE dim_aml_customer_temp;

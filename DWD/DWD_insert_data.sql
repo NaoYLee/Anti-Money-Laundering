@@ -143,7 +143,9 @@ WHERE (
 INSERT
     OVERWRITE TABLE aml_dwd.dim_aml_date
 SELECT
-    full_date AS date_sk,
+    cast(
+        concat_ws('', split(full_date, '-')) AS int
+    ) AS date_sk,
     full_date,
     CASE date_format(full_date, 'u')
         WHEN '1' THEN '星期一'
@@ -285,8 +287,8 @@ INSERT
     OVERWRITE TABLE aml_dwd.fact_aml_transaction PARTITION (etl_date)
 SELECT
     oatd.txn_id AS transaction_sk, -- from ODS_aml_transaction_detail
-    dac.customer_id AS customer_sk, -- from dim_aml_customer
-    dac.account_id AS account_sk, -- from dim_aml_account
+    dac.customer_sk AS customer_sk, -- from dim_aml_customer
+    daa.account_sk AS account_sk, -- from dim_aml_account
     d.date_sk AS date_sk, -- from dim_aml_date
     oatd.currency AS currency_sk, -- from ods_aml_transaction_detail
     CASE oatd.txn_type
@@ -324,7 +326,8 @@ SELECT
     END AS is_high_risk,
     oatd.etl_date
 FROM aml_ods.ods_aml_transaction_detail oatd
-    JOIN AML_dwd.dim_aml_account dac ON oatd.account_id = dac.account_id
+    JOIN AML_dwd.dim_aml_account daa ON oatd.account_id = daa.account_id
+    join aml_dwd.dim_aml_customer dac on dac.customer_id = daa.customer_id
     JOIN aml_dwd.dim_aml_date d ON oatd.txn_date = d.full_date
 WHERE (
         oatd.txn_amount >= 0
@@ -438,10 +441,20 @@ INSERT
     OVERWRITE TABLE aml_dwd.fact_aml_str_report PARTITION (etl_date)
 SELECT
     oastr.str_id AS report_sk,
-    dac.customer_id AS customer_sk,
+    dac.customer_sk AS customer_sk,
     d.date_sk AS date_sk,
-    oastr.first_txn_date AS first_txn_date_sk,
-    oastr.last_txn_date AS last_txn_date_sk,
+    cast(
+        concat_ws(
+            '',
+            split(oastr.first_txn_date, '-')
+        ) AS int
+    ) AS first_txn_date_sk,
+    cast(
+        concat_ws(
+            '',
+            split(oastr.last_txn_date, '-')
+        ) AS int
+    ) AS last_txn_date_sk,
     CASE oastr.report_type
         WHEN 'INITIAL' THEN '初始'
         WHEN 'AMENDMENT' THEN '修正'

@@ -1,6 +1,6 @@
 新需求
 ODS层构建增量表,DWD层拉链表 合并更新数据,保证开链闭链时间的准确,开链时间为08.29,上一个状态的闭链时间为T-1
-CREATE TABLE aml_ods.ods_aml_customer_maste_increment LIKE aml_ods.ods_aml_customer_master;
+CREATE TABLE aml_ods.ods_aml_customer_master_increment LIKE aml_ods.ods_aml_customer_master;
 
 INSERT INTO TABLE ods_aml_customer_maste_increment partition (etl_date='2025-08-29')
 VALUES
