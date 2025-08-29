@@ -122,6 +122,7 @@ FROM aml_ods.ods_aml_account_master;
 INSERT
     OVERWRITE TABLE aml_dwd.dim_aml_date
 SELECT
+    full_date AS date_sk,
     full_date,
     CASE date_format(full_date, 'u')
         WHEN '1' THEN '星期一'
@@ -252,3 +253,170 @@ SELECT
     ) AS threshold,
     etl_date
 FROM aml_ods.ods_aml_monitoring_rule;
+
+-- 向DWD层交易事实表写入数据
+INSERT
+    OVERWRITE TABLE aml_dwd.fact_aml_transaction PARTITION (etl_date)
+SELECT
+    oatd.txn_id AS transaction_sk, -- from ODS_aml_transaction_detail
+    dac.customer_id AS customer_sk, -- from dim_aml_customer
+    dac.account_id AS account_sk, -- from dim_aml_account
+    d.date_sk AS date_sk, -- from dim_aml_date
+    oatd.currency AS currency_sk, -- from ods_aml_transaction_detail
+    CASE oatd.txn_type
+        WHEN 'CASH_DEP' THEN '现金存入'
+        WHEN 'CASH_WD' THEN '现金取款'
+        WHEN 'TFR_IN' THEN '转入'
+        WHEN 'TFR_OUT' THEN '转出'
+        WHEN 'PAYMENT' THEN '支付'
+        ELSE oatd.txn_type
+    END AS txn_type,
+    oatd.txn_sub_type,
+    CASE oatd.txn_channel
+        WHEN 'COUNTER' THEN '柜面'
+        WHEN 'ATM' THEN 'ATM'
+        WHEN 'ONLINE' THEN '网银'
+        WHEN 'MOBILE' THEN '手机银行'
+        WHEN 'POS' THEN 'POS'
+        ELSE oatd.txn_channel
+    END AS txn_channel,
+    CASE oatd.txn_status
+        WHEN 'SUCCESS' THEN '成功'
+        WHEN 'FAILED' THEN '失败'
+        WHEN 'PENDING' THEN '待处理'
+        ELSE oatd.txn_status
+    END AS txn_status,
+    oatd.txn_amount AS amount,
+    CASE
+        WHEN oatd.remitter_country != oatd.beneficiary_country THEN TRUE
+        ELSE FALSE
+    END AS is_cross_border,
+    CASE
+        WHEN oatd.txn_amount > 50000
+        OR oatd.txn_type LIKE 'CASH_%' THEN TRUE
+        ELSE FALSE
+    END AS is_high_risk,
+    oatd.etl_date
+FROM aml_ods.ods_aml_transaction_detail oatd
+    JOIN AML_dwd.dim_aml_account dac ON oatd.account_id = dac.account_id
+    JOIN aml_dwd.dim_aml_date d ON oatd.txn_date = d.full_date;
+
+-- 向DWD层监控报告事实表写入数据
+INSERT
+    OVERWRITE TABLE aml_dwd.fact_aml_screening PARTITION (etl_date)
+SELECT
+    s.result_id AS screening_sk,
+    c.customer_sk,
+    w.watchlist_sk,
+    d.date_sk,
+    -- 筛查类型转换
+    CASE s.screening_type
+        WHEN 'CUSTOMER' THEN '客户开户'
+        WHEN 'TRANSACTION' THEN '交易'
+        WHEN 'PERIODIC' THEN '定期回溯'
+        ELSE s.screening_type
+    END AS screening_type,
+    -- 目标类型转换
+    CASE s.target_type
+        WHEN 'CUSTOMER' THEN '客户'
+        WHEN 'ACCT' THEN '账户'
+        WHEN 'COUNTERPARTY' THEN '交易对手'
+        ELSE s.target_type
+    END AS target_type,
+    -- 匹配等级转换
+    CASE s.match_level
+        WHEN 'EXACT' THEN '完全匹配'
+        WHEN 'FUZZY_HIGH' THEN '模糊高'
+        WHEN 'FUZZY_MED' THEN '模糊中'
+        WHEN 'FUZZY_LOW' THEN '模糊低'
+        ELSE s.match_level
+    END AS match_level,
+    -- 筛查状态转换
+    CASE s.screening_status
+        WHEN 'PENDING' THEN '待审'
+        WHEN 'ALERT' THEN '警报'
+        WHEN 'FALSE_POSITIVE' THEN '误报'
+        WHEN 'CONFIRMED' THEN '确认'
+        ELSE s.screening_status
+    END AS screening_status,
+    s.match_score,
+    s.etl_date
+FROM aml_ods.ods_aml_screening_result s
+    JOIN aml_dwd.dim_aml_customer c ON s.target_id = c.customer_id
+    AND s.target_type = 'CUSTOMER'
+    JOIN aml_dwd.dim_aml_watchlist w ON s.matched_entity_id = w.entity_id
+    JOIN aml_dwd.dim_aml_date d ON s.screening_date = d.full_date;
+
+-- 向DWD层预警事实表写入数据
+INSERT
+    OVERWRITE TABLE aml_dwd.fact_aml_alert PARTITION (etl_date)
+SELECT
+    a.alert_id AS alert_sk,
+    c.customer_sk,
+    acc.account_sk,
+    r.rule_sk,
+    d.date_sk,
+    -- 预警类型转换
+    CASE a.alert_type
+        WHEN 'RULE' THEN '规则'
+        WHEN 'MODEL' THEN '模型'
+        ELSE a.alert_type
+    END AS alert_type,
+    -- 预警状态转换
+    CASE a.alert_status
+        WHEN 'PENDING' THEN '待处理'
+        WHEN 'REVIEWING' THEN '审核中'
+        WHEN 'DISMISSED' THEN '排除'
+        WHEN 'CONFIRMED' THEN '确认'
+        ELSE a.alert_status
+    END AS alert_status,
+    -- 严重等级转换
+    CASE a.severity_level
+        WHEN 'LOW' THEN '低'
+        WHEN 'MEDIUM' THEN '中'
+        WHEN 'HIGH' THEN '高'
+        WHEN 'CRITICAL' THEN '严重'
+        ELSE a.severity_level
+    END AS severity_level,
+    a.trigger_amount,
+    a.trigger_txn_count,
+    a.etl_date
+FROM
+    aml_ods.ods_aml_alert a
+    JOIN aml_dwd.dim_aml_customer c ON a.customer_id = c.customer_id
+    LEFT JOIN aml_dwd.dim_aml_account acc ON a.account_id = acc.account_id
+    JOIN aml_dwd.dim_aml_rule r ON a.rule_id = r.rule_id
+    JOIN aml_dwd.dim_aml_date d ON a.alert_date = d.full_date;
+
+-- 向DWD层可疑交易报告事实表写入数据
+INSERT
+    OVERWRITE TABLE aml_dwd.fact_aml_str_report PARTITION (etl_date)
+SELECT
+    oastr.str_id AS report_sk,
+    dac.customer_id AS customer_sk,
+    d.date_sk AS date_sk,
+    oastr.first_txn_date AS first_txn_date_sk,
+    oastr.last_txn_date AS last_txn_date_sk,
+    CASE oastr.report_type
+        WHEN 'INITIAL' THEN '初始'
+        WHEN 'AMENDMENT' THEN '修正'
+        WHEN 'CLOSURE' THEN '结案'
+        ELSE oastr.report_type
+    END AS report_type,
+    CASE oastr.case_category
+        WHEN 'MONEY_LAUNDERING' THEN '洗钱'
+        WHEN 'TERRORIST_FINANCING' THEN '恐怖融资'
+        WHEN 'FRAUD' THEN '欺诈'
+        ELSE oastr.case_category
+    END AS case_category,
+    CASE oastr.report_status
+        WHEN 'DRAFT' THEN '草稿'
+        WHEN 'SUBMITTED' THEN '已提交'
+        WHEN 'WITHDRAWN' THEN '已撤回'
+        ELSE oastr.report_status
+    END AS report_status,
+    oastr.total_amount,
+    oastr.etl_date
+FROM aml_ods.ods_aml_suspicious_txn_report oastr
+    JOIN aml_dwd.dim_aml_customer dac ON oastr.customer_id = dac.customer_id
+    JOIN aml_dwd.dim_aml_date d ON oastr.report_date = d.full_date;
