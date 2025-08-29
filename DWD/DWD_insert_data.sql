@@ -58,13 +58,13 @@ SELECT
         cast('9999-12-31' AS DATE)
     ) AS end_date,
     -- 设置是否当前版本
-    CASE oacm.close_date
-        WHEN NULL THEN TRUE
+    CASE
+        WHEN oacm.close_date IS NULL THEN TRUE
         ELSE FALSE
     END AS is_current,
     -- 设置开链时间
     CURRENT_DATE () AS start_time,
-    -- 设置失效时间
+    -- 设置闭链时间
     cast('9999-12-31' AS DATE) AS end_time,
     -- 获取分区日期
     oacm.etl_date AS etl_date
