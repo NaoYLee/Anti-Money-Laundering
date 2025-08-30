@@ -6,8 +6,9 @@ CREATE TABLE aml_ads.ads_aml_customer_risk_profile (
     total_balance decimal(18, 2) COMMENT '账户总余额',
     last_7d_txn_cnt int COMMENT '近7天交易笔数',
     risk_change_flag STRING COMMENT '风险等级变化标志',
-    industry_risk_tag STRING COMMENT '行业风险标签'
-) COMMENT '客户风险全景视图' PARTITIONED BY (edit_date STRING)
+    industry_risk_tag STRING COMMENT '行业风险标签',
+    valid_date DATE COMMENT '有效日期'
+) COMMENT '客户风险全景视图'
 STORED AS PARQUET TBLPROPERTIES ("PARQUET.compress" = "SNAPPY");
 
 -- 将风险等级转化为数字格式
@@ -40,7 +41,9 @@ SELECT
         ELSE 0
     END AS yesterday_risk_num,
     dacrp.etl_date
-FROM aml_dws.dws_aml_customer_risk_profile dacrp;
+FROM aml_dws.dws_aml_customer_risk_profile dacrp
+WHERE
+    dacrp.etl_date BETWEEN date_sub(CURRENT_DATE (), 1) AND CURRENT_DATE  ();
 
 -- 比较风险等级变化
 CREATE VIEW riskCompare AS
@@ -49,36 +52,52 @@ SELECT
     today_risk_level,
     yesterday_risk_level,
     CASE
-        WHEN today_risk_num > yesterday_risk_num THEN '升级'
-        WHEN today_risk_num < yesterday_risk_num THEN '降级'
-        ELSE '持平'
+        WHEN today_risk_num > yesterday_risk_num THEN 'u'
+        WHEN today_risk_num < yesterday_risk_num THEN 'd'
+        WHEN today_risk_num = yesterday_risk_num THEN 'e'
+        ELSE 'ERROR'
     END AS risk_change_flag
-FROM riskflag;
+FROM aml_dws.riskflag;
 
 -- 统计最近七日交易笔数
 CREATE VIEW transactionCountLast7d AS
 SELECT customer_sk, count(transaction_sk) AS last_7d_txn_cnt
 FROM aml_dwd.fact_aml_transaction
 WHERE
-    date_sk BETWEEN date_sub(CURRENT_DATE (), 7) AND CURRENT_DATE  ()
+    date_sk BETWEEN cast(
+        concat_ws(
+            '',
+            split(CURRENT_DATE (), '-')
+        ) AS int
+    ) - 7 AND cast(
+        concat_ws(
+            '',
+            split(CURRENT_DATE (), '-')
+        ) AS int
+    )
 GROUP BY
     customer_sk;
 
 -- 每天执行一次以下语句，将每日最新数据插入客户风险全景视图中
 INSERT
-    OVERWRITE TABLE aml_ads.ads_aml_customer_risk_profile PARTITION (etl_date = CURRENT_DATE ())
+    OVERWRITE TABLE aml_ads.ads_aml_customer_risk_profile
 SELECT
     dacrp.customer_sk AS customer_id,
     rc.yesterday_risk_level AS risk_level,
     dacrp.total_balance AS total_balance,
     tcl.last_7d_txn_cnt AS last_7d_txn_cnt,
-    rc.risk_change_flag AS risk_change_flag,
-    CASE dacrp.industry_risk_tag
+    CASE rc.risk_change_flag
+        WHEN 'u' THEN '升级'
+        WHEN 'd' THEN '降级'
+        WHEN 'e' THEN '持平'
+        WHEN 'ERROR' THEN '异常'
+    END AS risk_change_flag,
+    CASE dacrp.industry_risk_flag
         WHEN TRUE THEN '高危'
         ELSE '常规'
-    END AS industry_risk_tag
+    END AS industry_risk_tag,
+    CURRENT_DATE () AS valid_date
 FROM aml_dws.dws_aml_customer_risk_profile dacrp
-    LEFT JOIN aml_ads.riskCompare rc ON dacrp.customer_sk = rc.customer_sk
-    LEFT JOIN aml_ads.transactionCountLast7d tcl ON dacrp.customer_sk = tcl.customer_sk
-WHERE
-    rc.yesterday_risk_level IS NOT NULL;
+    LEFT JOIN aml_dws.riskCompare rc ON dacrp.customer_sk = rc.customer_sk
+    AND rc.yesterday_risk_level IS NOT NULL
+    LEFT JOIN aml_dws.transactionCountLast7d tcl ON dacrp.customer_sk = tcl.customer_sk;
