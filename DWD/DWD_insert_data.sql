@@ -300,6 +300,7 @@ SELECT
         ELSE oatd.txn_type
     END AS txn_type,
     oatd.txn_sub_type,
+    oatd.txn_time,
     CASE oatd.txn_channel
         WHEN 'COUNTER' THEN '柜面'
         WHEN 'ATM' THEN 'ATM'

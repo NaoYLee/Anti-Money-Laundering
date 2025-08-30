@@ -92,6 +92,7 @@ CREATE TABLE aml_dwd.fact_aml_transaction (
     currency_sk STRING COMMENT '币种代理键',
     txn_type STRING COMMENT '交易类型', -- 转换值：现金存入/现金取款/转入/转出/支付
     txn_sub_type STRING COMMENT '交易子类型',
+    txn_time TIMESTAMP COMMENT '交易时间',
     txn_channel STRING COMMENT '交易渠道', -- 转换值：柜面/ATM/网银/手机银行/POS
     txn_status STRING COMMENT '交易状态', -- 转换值：成功/失败/待处理
     amount DECIMAL(18, 2) COMMENT '交易金额',
