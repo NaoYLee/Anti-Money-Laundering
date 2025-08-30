@@ -18,13 +18,13 @@
 ![Static Badge](https://img.shields.io/badge/Git-a?logo=gitforwindows&logoColor=%23FFFFFF&color=%2380B3FF)
 ![Static Badge](https://img.shields.io/badge/Gitee-a?logo=gitee&logoColor=%23FFFFFF&color=%23C71D23)
 
-## IDEs
+## IDEs & Tools
 
 ![Static Badge](https://img.shields.io/badge/Notepad%2B%2B-a?logo=notepadplusplus&logoColor=%23FFFFFF&color=%2390E59A)
 ![Static Badge](https://img.shields.io/badge/VS_Code-a?logoColor=%23FFFFFF&color=%23007ACC)
 ![Static Badge](https://img.shields.io/badge/datagrip-a?logo=datagrip&logoColor=ffffff&color=%23000000)
 
-## Platforms
+## Platforms & Environments
 
 ![Static Badge](https://img.shields.io/badge/VMware-a?logo=vmware&logoColor=%23FFFFFF&color=%23607078)
 ![Static Badge](https://img.shields.io/badge/Red%20Hat-a?logo=redhat&logoColor=%23FFFFFF&label=Linux&color=%23EE0000)
